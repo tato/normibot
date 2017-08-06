@@ -29,8 +29,8 @@ from config import *
 # TODO: check for errors in every html request sent (raise_for_status()?)
 
 artist_format = '<b>{}</b>\nCountry:{}\nID:{}\nScore:{}\n'
-def artist_to_string(artist):
-	return artist_format.format(a['name'], a['country'], a['id'], a['score'])
+def artist_to_string(a):
+	return artist_format.format(a['name'], a['country'] if 'country' in a else 'Nowhere', a['id'], a['score'])
 
 album_format = '<b>{}</b> ({})\nby {}\n...ID {}'
 def album_to_string(album):
@@ -140,7 +140,7 @@ def main():
 				offset = max(offset, update['update_id'])
 				handle_update(update)
 		offset += 1
-		with offsetfile.open('OFFSET', 'w') as f:
+		with offsetfile.open('w') as f:
 			f.write(str(offset))
 
 if __name__ == '__main__':

@@ -1,5 +1,6 @@
 *.log
 *.pyc
+*.out
 
 # Stored API Keys and private info
 config.py

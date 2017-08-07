@@ -22,99 +22,136 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import logging
-from pathlib import Path
 import requests
 from config import *
 
-# TODO: check for errors in every html request sent (raise_for_status()?)
+def artist_to_string(artist):
+    if 'name' not in artist:
+        return 'Something went wrong, I\'m so very sorry :('
 
-artist_format = '<b>{}</b>\nCountry:{}\nID:{}\nScore:{}\n'
-def artist_to_string(a):
-	return artist_format.format(a['name'], a['country'] if 'country' in a else 'Nowhere', a['id'], a['score'])
+    sb = ['<b>', artist['name'], '</b>']
+    if 'disambiguation' in artist:
+        sb.extend(['\n', artist['disambiguation']])
 
-album_format = '<b>{}</b> ({})\nby {}\n...ID {}'
+    if 'area' in artist:
+        area = artist['area']
+        if 'name' in area:
+            sb.extend(['\nfrom ', area['name']])
+
+    if 'life-span' in artist:
+        ls = artist['life-span']
+        if 'begin' in ls:
+            sb.extend(['\nborn in ', ls['begin']])
+
+    return ''.join(sb)
+
 def album_to_string(album):
-	return album_format.format(album['title'], 'TBD', 'Unknown', album['id'])
+	# TODO: figure out which attributes are optional in the API response
+    if 'title' not in album:
+        return 'Something went wrong, I\'m so very sorry :('
 
-track_format = '<b>{}</b> ({})\nby {}\nfrom {} ({})\n...'
-def track_to_string(track):
-	return track_format.format('Not Yet Titled', '00:00', 'Unknown', 'Nowhere', 'TBD')
+	sb = ['<b>', album['title'], '</b>']
+	if 'date' in album:
+		sb.extend([' (', str(album['date']), ')')
+
+    ac = album.get('artist-credit', [])
+	if ac:
+		credit = ac[0]
+		if 'artist' in credit:
+			artist = credit['artist']
+			if 'name' in artist:
+                sb.extend(['\nby ', artist['name']])
+
+	return ''.join(sb)
 
 # TODO: Use inc= arguments to obtain additional info (e.g. &inc=aliases+tags+ratings)
 # TODO: I know for sure I can get ratings with that, very likely a list of albums too
-def get_artist(artist):
-	logging.info('Requesting {} from musicbrainz'.format(artist))
+# TODO UPDATED: I don't know why I was so sure but I think there aren't any inc= in the search page
+def search_artist(artist_name, count):
+	logging.info('Requesting {} from musicbrainz'.format(artist_name))
+    furl = 'http://musicbrainz.org/ws/2/artist/?query=artist:{}&limit={}&fmt=json'
 	req = requests.get(
-		'http://musicbrainz.org/ws/2/artist/?query=artist:{}&limit=1&fmt=json'.format(artist),
+		furl.format(artist_name, count),
 		headers = { 'User-Agent': get_user_agent_string() }
 	)
+    # TODO: What abount HTML Errors
 	response = req.json()
-	return response['artists'][0] if response['count'] > 0 else None
+    # Assuming response['artists'] is a list here, fuck this defensive coding
+	return response.get('artists', [])
 
-def get_album(album):
-	logging.info('Requesting {} from musicbrainz'.format(album))
+def search_release(release_name, count):
+	logging.info('Requesting {} from musicbrainz'.format(release_name))
+    furl = 'http://musicbrainz.org/ws/2/release/?query=release:{}&limit={}&fmt=json'
 	req = requests.get(
-		'http://musicbrainz.org/ws/2/release/?query=release:{}&limit=1&fmt=json'.format(album),
+		furl.format(release_name, count),
 		headers = { 'User-Agent': get_user_agent_string() }
 	)
+    # TODO: What about HTML Errors?
 	response = req.json()
-	return response['releases'][0] if response['count'] > 0 else None
+    # Assuming response['releases'] is a list here, fuck this defensive coding
+    return response.get('releases', [])
 
-def get_track(song):
-	pass
-
+# IDEA: It might be nicer to use **kwargs instead of an explicit dict argument
 telegram_url = 'https://api.telegram.org/bot{}/'.format(get_telegram_token())
-def call_telegram_method(method, args=None):
-	r = requests.post(telegram_url + method, data=args)
+def call_telegram_method(method, **kwargs):
+	r = requests.post(telegram_url + method, data=kwargs)
 	return r.json()
 
-def handle_artist(artist, user):
-	response = get_artist(artist)
-	text = artist_to_string(response) if response else 'Not found'
+def handle_artist(artist_name, chat_id):
+	response = search_artist(artist_name, 1)
+    if not isinstance(response, list):
+        logging.error('search_artist didnt return list with {}'.format(artist_name))
+        return
 
-	user_info = '@' + user['username'] if 'username' in user else user['id']
-	logging.info('Sending artist {} to user {}'.format(artist, user_info))
+    if len(response) < 1:
+        logging.info('Sending not found {} to {}'.format(artist_name, chat_id))
+        call_telegram_method('sendMessage', chat_id = chat_id, text = 'Not found')
+        return
+
+	text = artist_to_string(response[0])
+
+	logging.info('Sending artist {} to chat {}'.format(artist_name, chat_id))
 	logging.debug('Response: "{}"'.format(text))
 
-	args = {
-		'chat_id': user['id'],
-		'text': text,
-		'parse_mode': 'HTML'
-	}
+	call_telegram_method('sendMessage', chat_id = chat_id, text = text, parse_mode = 'HTML')
 
-	call_telegram_method('sendMessage', args)
+def handle_release(release_title, chat_id):
+	response = search_release(release_title, 1)
+    if not isinstance(response, list):
+        logging.error('search_release didnt return list with {}'.format(release_title))
+        return
 
-def handle_album(album, user):
-	response = get_album(album)
-	text = album_to_string(album) if album else 'Not found'
+    if len(response) < 1:
+        logging.info('Sending not found {} to {}'.format(release_title, chat_id))
+        return
 
-	user_info = '@' + user['username'] if 'username' in user else user['id']
-	logging.info('Sending album {} to user {}'.format(album, user_info))
+	text = release_to_string(response[0])
+
+	logging.info('Sending release "{}" to chat id {}'.format(release_title, chat_id))
 	logging.debug('Response: "{}"'.format(text))
 
-	args = {
-		'chat_id': user['id'],
-		'text': text,
-		'parse_mode': 'HTML'
-	}
+	call_telegram_method('sendMessage', chat_id = chat_id, text = text, parse_mode = 'HTML')
 
-	call_telegram_method('sendMessage', args)
-
-def handle_track(song, user):
-	pass
+def handle_track(track_title, chat_id):
+	call_telegram_method(
+        'sendMessage',
+        chat_id = chat_id,
+        text = '<b>NO PREGUNTES TODAVÍA XOXO</b>\n',
+        parse_mode = 'HTML'
+    )
 
 def handle_update(update):
 	logging.info('Handling update with ID {}'.format(update['update_id']))
 	if 'message' in update:
 		msg = update['message']
-		if 'text' in msg and 'from' in msg:
+		if 'text' in msg and 'chat' in msg: # Chat isn't optional, but checking just in case
 			t = msg['text']
 			if t.startswith('/artist'):
-				handle_artist(t[8:], msg['from'])
+				handle_artist(t[8:], msg['chat'].get('id', 0))
 			elif t.startswith('/album'):
-				handle_album(t[7:], msg['from'])
+				handle_release(t[7:], msg['chat'].get('id', 0))
 			elif t.startswith('/song'):
-				handle_song(t[6:], msg['from'])
+				handle_track(t[6:], msg['chat'].get('id', 0))
 
 def main():
 	logging.basicConfig(filename='normibot.log', level=logging.DEBUG, format='(%(asctime)s) %(levelname)s: %(funcName)s() says "%(message)s"')
@@ -123,25 +160,25 @@ def main():
 	logging.info('Not currently receiving updates. Shutting down.')
 
 	offset = 0
-	offsetfile = Path('./OFFSET')
-	if offsetfile.exists():
-		with offsetfile.open('r') as f:
-			offset = int(f.readline())
+	# HACK: In order to calculate the offset, I getUpdates as a way to get older updates and get the
+	# HACK: latest offset that way. This has several problems:
+	# HACK:  - If there aren't old messages, I will wait for the first query and ignore it
+	# HACK:  - If there are more messages than the default limit telegram sends me, what happens
+	# HACK:     depends on the order the updates are sent. If older updates are sent, I will
+	# HACK:     possibly answer old queries again. I could make the limit bigger but that's a
+	# HACK:     bandaid.
+	updates = call_telegram_method('getUpdates', timeout = 60, allowed_updates = ['message'])
+	if updates and updates.get('ok', False):
+		for update in updates.get('result', []):
+			offset = max(offset, update.get('update_id', 0) + 1)
+
 	while True:
-		args = {
-			'offset': offset,
-			'timeout': 60,
-			'allowed_updates': ['message'] # TODO: include inline queries when necessary
-		}
-		updates = call_telegram_method('getUpdates', args)
-		# TODO: this might be too much checking, make some assumptions
-		if updates and 'ok' in updates and updates['ok']:
-			for update in updates['result']:
-				offset = max(offset, update['update_id'])
+		# TODO: allow inline updates when necessary
+		updates = call_telegram_method('getUpdates', offset = offset, timeout = 60, allowed_updates = ['message'])
+		if updates and updates.get('ok', False):
+			for update in updates.get('result', []):
+				offset = max(offset, update.get('update_id', 0) + 1)
 				handle_update(update)
-		offset += 1
-		with offsetfile.open('w') as f:
-			f.write(str(offset))
 
 if __name__ == '__main__':
 	main()

@@ -26,41 +26,41 @@ import requests
 from config import *
 
 def artist_to_string(artist):
-    if 'name' not in artist:
-        return 'Something went wrong, I\'m so very sorry :('
+	if 'name' not in artist:
+		return 'Something went wrong, I\'m so very sorry :('
 
-    sb = ['<b>', artist['name'], '</b>']
-    if 'disambiguation' in artist:
-        sb.extend(['\n', artist['disambiguation']])
+	sb = ['<b>', artist['name'], '</b>']
+	if 'disambiguation' in artist:
+		sb.extend(['\n', artist['disambiguation']])
 
-    if 'area' in artist:
-        area = artist['area']
-        if 'name' in area:
-            sb.extend(['\nfrom ', area['name']])
+	if 'area' in artist:
+		area = artist['area']
+		if 'name' in area:
+			sb.extend(['\nfrom ', area['name']])
 
-    if 'life-span' in artist:
-        ls = artist['life-span']
-        if 'begin' in ls:
-            sb.extend(['\nborn in ', ls['begin']])
+	if 'life-span' in artist:
+		ls = artist['life-span']
+		if 'begin' in ls:
+			sb.extend(['\nborn in ', ls['begin']])
 
-    return ''.join(sb)
+	return ''.join(sb)
 
-def album_to_string(album):
+def release_to_string(album):
 	# TODO: figure out which attributes are optional in the API response
-    if 'title' not in album:
-        return 'Something went wrong, I\'m so very sorry :('
+	if 'title' not in album:
+		return 'Something went wrong, I\'m so very sorry :('
 
 	sb = ['<b>', album['title'], '</b>']
 	if 'date' in album:
-		sb.extend([' (', str(album['date']), ')')
+		sb.extend([' (', str(album['date']), ')'])
 
-    ac = album.get('artist-credit', [])
+	ac = album.get('artist-credit', [])
 	if ac:
 		credit = ac[0]
 		if 'artist' in credit:
 			artist = credit['artist']
 			if 'name' in artist:
-                sb.extend(['\nby ', artist['name']])
+				sb.extend(['\nby ', artist['name']])
 
 	return ''.join(sb)
 
@@ -69,27 +69,27 @@ def album_to_string(album):
 # TODO UPDATED: I don't know why I was so sure but I think there aren't any inc= in the search page
 def search_artist(artist_name, count):
 	logging.info('Requesting {} from musicbrainz'.format(artist_name))
-    furl = 'http://musicbrainz.org/ws/2/artist/?query=artist:{}&limit={}&fmt=json'
+	furl = 'http://musicbrainz.org/ws/2/artist/?query=artist:{}&limit={}&fmt=json'
 	req = requests.get(
 		furl.format(artist_name, count),
 		headers = { 'User-Agent': get_user_agent_string() }
 	)
-    # TODO: What abount HTML Errors
+	# TODO: What abount HTML Errors
 	response = req.json()
-    # Assuming response['artists'] is a list here, fuck this defensive coding
+	# Assuming response['artists'] is a list here, fuck this defensive coding
 	return response.get('artists', [])
 
 def search_release(release_name, count):
 	logging.info('Requesting {} from musicbrainz'.format(release_name))
-    furl = 'http://musicbrainz.org/ws/2/release/?query=release:{}&limit={}&fmt=json'
+	furl = 'http://musicbrainz.org/ws/2/release/?query=release:{}&limit={}&fmt=json'
 	req = requests.get(
 		furl.format(release_name, count),
 		headers = { 'User-Agent': get_user_agent_string() }
 	)
-    # TODO: What about HTML Errors?
+	# TODO: What about HTML Errors?
 	response = req.json()
-    # Assuming response['releases'] is a list here, fuck this defensive coding
-    return response.get('releases', [])
+	# Assuming response['releases'] is a list here, fuck this defensive coding
+	return response.get('releases', [])
 
 # IDEA: It might be nicer to use **kwargs instead of an explicit dict argument
 telegram_url = 'https://api.telegram.org/bot{}/'.format(get_telegram_token())
@@ -99,14 +99,14 @@ def call_telegram_method(method, **kwargs):
 
 def handle_artist(artist_name, chat_id):
 	response = search_artist(artist_name, 1)
-    if not isinstance(response, list):
-        logging.error('search_artist didnt return list with {}'.format(artist_name))
-        return
+	if not isinstance(response, list):
+		logging.error('search_artist didnt return list with {}'.format(artist_name))
+		return
 
-    if len(response) < 1:
-        logging.info('Sending not found {} to {}'.format(artist_name, chat_id))
-        call_telegram_method('sendMessage', chat_id = chat_id, text = 'Not found')
-        return
+	if len(response) < 1:
+		logging.info('Sending not found {} to {}'.format(artist_name, chat_id))
+		call_telegram_method('sendMessage', chat_id = chat_id, text = 'Not found')
+		return
 
 	text = artist_to_string(response[0])
 
@@ -117,13 +117,13 @@ def handle_artist(artist_name, chat_id):
 
 def handle_release(release_title, chat_id):
 	response = search_release(release_title, 1)
-    if not isinstance(response, list):
-        logging.error('search_release didnt return list with {}'.format(release_title))
-        return
+	if not isinstance(response, list):
+		logging.error('search_release didnt return list with {}'.format(release_title))
+		return
 
-    if len(response) < 1:
-        logging.info('Sending not found {} to {}'.format(release_title, chat_id))
-        return
+	if len(response) < 1:
+		logging.info('Sending not found {} to {}'.format(release_title, chat_id))
+		return
 
 	text = release_to_string(response[0])
 
@@ -134,11 +134,11 @@ def handle_release(release_title, chat_id):
 
 def handle_track(track_title, chat_id):
 	call_telegram_method(
-        'sendMessage',
-        chat_id = chat_id,
-        text = '<b>NO PREGUNTES TODAVÍA XOXO</b>\n',
-        parse_mode = 'HTML'
-    )
+		'sendMessage',
+		chat_id = chat_id,
+		text = '<b>NO PREGUNTES TODAVÍA XOXO</b>\n',
+		parse_mode = 'HTML'
+	)
 
 def handle_update(update):
 	logging.info('Handling update with ID {}'.format(update['update_id']))

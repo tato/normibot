@@ -2,7 +2,7 @@ import bottle, dotenv, requests, os, sys, logging
 
 handlers = [
     logging.StreamHandler(stream=sys.stdout),
-    logging.FileHandler(filename=os.getenv("LOG_FILE"))
+    logging.FileHandler(filename=os.getenv("LOG_FILE") or "/etc/normibot_logs.txt")
 ]
 logging.basicConfig(handlers=handlers, style="{", level="DEBUG")
 log = logging.getLogger("normibot")
@@ -36,6 +36,7 @@ if __name__ == "__main__":
     host = os.getenv("HOST") or "localhost"
     port = os.getenv("PORT") or "8090"
     port = int(port)
+    log.info("started server on {}:{}", host, port)
     requests.get(turi("setWebhook"), params={
         "url": f"http://{host}:{port}/",
         "certificate": "https://core.telegram.org/bots/api#setwebhook",

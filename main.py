@@ -4,8 +4,7 @@ handlers = [
     logging.StreamHandler(stream=sys.stdout),
     logging.FileHandler(filename=os.getenv("LOG_FILE") or "/etc/normibot_logs.txt")
 ]
-logging.basicConfig(handlers=handlers, style="{", level="DEBUG")
-log = logging.getLogger("normibot")
+logging.basicConfig(handlers=handlers, level="DEBUG")
 
 
 def turi(endpoint):
@@ -14,9 +13,9 @@ def turi(endpoint):
 
 @bottle.route("/")
 def receive_webhook():
-    log.info("received webhook, attempting to print json body:")
+    logging.info("received webhook, attempting to print json body:")
     try:
-        log.info(bottle.request.json)
+        logging.info(bottle.request.json)
         update = bottle.request.json
         if update["message"] != None and update["message"]["text"] != None:
             text = update["message"]["text"]
@@ -27,8 +26,8 @@ def receive_webhook():
                     "text": new_text,
                 })
     except Exception as e:
-        log.error("failed, printing exception")
-        log.error(e)
+        logging.error("failed, printing exception")
+        logging.error(e)
     return 200
 
 if __name__ == "__main__":
@@ -36,7 +35,7 @@ if __name__ == "__main__":
     host = os.getenv("HOST") or "localhost"
     port = os.getenv("PORT") or "8090"
     port = int(port)
-    log.info("started server on {}:{}", host, port)
+    logging.info(f"started server on {host}:{port}")
     requests.get(turi("setWebhook"), params={
         "url": f"http://{host}:{port}/",
         "certificate": "https://core.telegram.org/bots/api#setwebhook",

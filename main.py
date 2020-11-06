@@ -1,11 +1,11 @@
 import bottle, dotenv, requests, os, sys, logging
 
-handlers = [
-    logging.StreamHandler(stream=sys.stdout),
-    logging.FileHandler(filename=os.getenv("LOG_FILE") or "/etc/normibot_logs.txt")
-]
-logging.basicConfig(handlers=handlers, level="DEBUG")
-
+# handlers = [
+#     logging.StreamHandler(stream=sys.stdout),
+#     logging.FileHandler(filename=os.getenv("LOG_FILE") or "/etc/normibot_logs.txt")
+# ]
+# logging.basicConfig(handlers=handlers, level="DEBUG")
+logging.basicConfig(filename=os.getenv("LOG_FILE") or "/etc/normibot_logs.txt", level=logging.DEBUG)
 
 def turi(endpoint):
     token = os.getenv("TELEGRAM_BOT_TOKEN") or "UNDEFINED_BOT_TOKEN"

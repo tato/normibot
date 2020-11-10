@@ -11,7 +11,7 @@ def turi(endpoint):
     token = os.getenv("TELEGRAM_BOT_TOKEN") or "UNDEFINED_BOT_TOKEN"
     return f"https://api.telegram.org/bot{token}/{endpoint}"
 
-@bottle.route("/")
+@bottle.post("/")
 def receive_webhook():
     logging.info("received webhook, attempting to print json body:")
     try:
@@ -37,7 +37,7 @@ if __name__ == "__main__":
     port = int(port)
     logging.info(f"started server on {host}:{port}")
     requests.get(turi("deleteWebhook"))
-    requests.get(turi("setWebhook"), params={
+    r = requests.get(turi("setWebhook"), params={
         "url": os.getenv("WEBHOOK_URI") or f"http://{host}:{port}/",
     })
     r.raise_for_status()

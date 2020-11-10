@@ -36,7 +36,7 @@ def receive_webhook():
     except Exception as e:
         logging.error("failed, printing exception")
         logging.error(e)
-    return 200
+    bottle.response.status = 200
 
 if __name__ == "__main__":
     dotenv.load_dotenv(verbose=True)

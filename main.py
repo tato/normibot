@@ -37,9 +37,8 @@ if __name__ == "__main__":
     port = os.getenv("PORT") or "8090"
     port = int(port)
     log.info("started server on {}:{}", host, port)
+    requests.get(turi("deleteWebhook"))
     requests.get(turi("setWebhook"), params={
         "url": f"http://{host}:{port}/",
-        "certificate": "https://core.telegram.org/bots/api#setwebhook",
-        "allowed_updates": []
     })
     bottle.run(host=host, port=port)

@@ -36,10 +36,9 @@ if __name__ == "__main__":
     port = os.getenv("PORT") or "8090"
     port = int(port)
     logging.info(f"started server on {host}:{port}")
-    r = requests.get(turi("setWebhook"), params={
+    requests.get(turi("deleteWebhook"))
+    requests.get(turi("setWebhook"), params={
         "url": os.getenv("WEBHOOK_URI") or f"http://{host}:{port}/",
-        # "certificate": "https://core.telegram.org/bots/api#setwebhook",
-        "allowed_updates": []
     })
     r.raise_for_status()
     logging.info(f"telegram setWebhook: {r.status_code}")

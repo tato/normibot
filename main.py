@@ -18,9 +18,17 @@ def receive_webhook():
         logging.info(bottle.request.json)
         update = bottle.request.json
         if update["message"] != None and update["message"]["text"] != None:
+            logging.info("apparently there is a message in the update")
+            logging.info("i'm sending something anyway")
+            requests.get(turi("sendMessage"), params={
+                "chat_id": update["message"]["chat"]["id"],
+                "text": "something",
+            })
             text = update["message"]["text"]
             if text.strip().startswith("https://open.spotify.com/"):
+                logging.info("apparently the message is a spotify link")
                 new_text = text.split("?")[0].strip()
+                logging.info(f"sending '{new_text}'")
                 requests.get(turi("sendMessage"), params={
                     "chat_id": update["message"]["chat"]["id"],
                     "text": new_text,

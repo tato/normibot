@@ -47,6 +47,7 @@ if __name__ == "__main__":
     requests.get(turi("deleteWebhook"))
     r = requests.get(turi("setWebhook"), params={
         "url": os.getenv("WEBHOOK_URI") or f"http://{host}:{port}/",
+        "drop_pending_updates": True,
     })
     r.raise_for_status()
     logging.info(f"telegram setWebhook: {r.status_code}")

@@ -13,9 +13,18 @@ ch.setFormatter(formatter)
 log.addHandler(fh)
 log.addHandler(ch)
 
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN") or "UNDEFINED_BOT_TOKEN"
 def turi(endpoint):
-    token = os.getenv("TELEGRAM_BOT_TOKEN") or "UNDEFINED_BOT_TOKEN"
-    return f"https://api.telegram.org/bot{token}/{endpoint}"
+    return f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/{endpoint}"
+
+def strip_spotify_url(update):
+    log.info("ENTER strip_spotify_url")
+    new_text = update.get("message", {}).get("text", "").split("?")[0].strip()
+    log.info(f"sending '{new_text}'")
+    requests.get(turi("sendMessage"), params={
+        "chat_id": update["message"]["chat"]["id"],
+        "text": new_text,
+    })
 
 @bottle.post("/")
 def receive_webhook():
@@ -23,22 +32,9 @@ def receive_webhook():
     try:
         log.info(bottle.request.json)
         update = bottle.request.json
-        if update["message"] != None and update["message"]["text"] != None:
-            log.info("apparently there is a message in the update")
-            log.info("i'm sending something anyway")
-            requests.get(turi("sendMessage"), params={
-                "chat_id": update["message"]["chat"]["id"],
-                "text": "something",
-            })
-            text = update["message"]["text"]
-            if text.strip().startswith("https://open.spotify.com/"):
-                log.info("apparently the message is a spotify link")
-                new_text = text.split("?")[0].strip()
-                log.info(f"sending '{new_text}'")
-                requests.get(turi("sendMessage"), params={
-                    "chat_id": update["message"]["chat"]["id"],
-                    "text": new_text,
-                })
+        if update.get("message", {}).get("text", "").startswith("https://open.spotify.com/"):
+            strip_spotify_url(update)
+
     except Exception as e:
         log.error("failed, printing exception")
         log.error(e)

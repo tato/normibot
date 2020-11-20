@@ -1,4 +1,6 @@
-import bottle, dotenv, requests, os, sys, logging
+import bottle, requests, os, sys, logging
+
+import environ
 
 logging.basicConfig(filename=os.getenv("LOG_FILE") or "/etc/normibot_logs.txt", level=logging.DEBUG)
 log = logging.getLogger("normibot")
@@ -41,7 +43,6 @@ def receive_webhook():
     bottle.response.status = 200
 
 if __name__ == "__main__":
-    dotenv.load_dotenv(verbose=True)
     host = os.getenv("HOST") or "localhost"
     port = os.getenv("PORT") or "8090"
     port = int(port)

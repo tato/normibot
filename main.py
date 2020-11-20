@@ -28,6 +28,17 @@ def strip_spotify_url(update):
         "text": new_text,
     })
 
+def timezone_from_location(update):
+    log.info("ENTER timezone_from_location")
+    location = update["message"]["location"]
+    # ANOTHER OPTION: https://gis.stackexchange.com/questions/88011/from-coordinates-find-country-using-python
+    r = requests.get(f"https://geocode.xyz/{location['latitude']},{location['longitude']}?geoit=json")
+    r.raise_for_status()
+    requests.get(turi("sendMessage"), params={
+        "chat_id": update["message"]["chat"]["id"],
+        "text": r.json()["timezone"],
+    })
+
 @bottle.post("/")
 def receive_webhook():
     log.info("received webhook, attempting to print json body:")
@@ -36,6 +47,8 @@ def receive_webhook():
         update = bottle.request.json
         if update.get("message", {}).get("text", "").startswith("https://open.spotify.com/"):
             strip_spotify_url(update)
+        elif update.get("message", {}).get("location", None):
+            timezone_from_location(update)
 
     except Exception as e:
         log.error("failed, printing exception")
